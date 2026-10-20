@@ -1,0 +1,72 @@
+{
+ "amp.permissions": [
+  {
+   "tool": "shell_command",
+   "action": "reject",
+   "matches": {
+    "command": "*git*push*"
+   }
+  },
+  {
+   "tool": "shell_command",
+   "action": "reject",
+   "matches": {
+    "command": "/(^|[;&|]\\s*)(sudo|rm\\s+-[a-zA-Z]*[rf])/"
+   }
+  },
+  {
+   "tool": "shell_command",
+   "action": "reject",
+   "matches": {
+    "command": "*amp threads delete*"
+   }
+  },
+  {
+   "tool": "shell_command",
+   "action": "reject",
+   "matches": {
+    "command": "*launchctl*"
+   }
+  },
+  {
+   "tool": "shell_command",
+   "action": "reject",
+   "matches": {
+    "command": "/^find\\b.*-(exec|execdir|delete)\\b/"
+   }
+  },
+  {
+   "tool": "shell_command",
+   "action": "allow",
+   "matches": {
+    "command": [
+     "tuple *",
+     "/usr/local/bin/tuple *",
+     "tuple-staging *",
+     "ls",
+     "ls *",
+     "cat *",
+     "head *",
+     "tail *",
+     "grep *",
+     "rg *",
+     "sed -n *",
+     "find *",
+     "wc *",
+     "date",
+     "date *",
+     "pbcopy*",
+     "printf *",
+     "echo *",
+     "jq *",
+     "sort *",
+     "stat *",
+     "pwd",
+     "./post-card*",
+     "post-card*",
+     "*/post-card*"
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""Validate one card JSON object from stdin and append it to the Backchannel app's cards.jsonl."""
+import json, os, sys
+try:
+    card = json.loads(sys.stdin.read())
+except ValueError as e:
+    sys.exit(f"not valid JSON: {e}")
+if not isinstance(card, dict) or not card.get("title"):
+    sys.exit("a card is a JSON object with at least a title")
+path = os.path.expanduser("~/Library/Application Support/Backchannel/cards.jsonl")
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "a") as f:
+    f.write(json.dumps(card, ensure_ascii=False) + "\n")
+print("posted:", card["title"])

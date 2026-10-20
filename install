@@ -1,0 +1,63 @@
+#!/bin/sh
+# Start Backchannel at login and keep it running: the card overlay app, and the
+# service that opens an Amp thread for every Tuple call. Re-running is safe.
+#   ./install            install (or refresh) and start both
+#   ./install --remove   stop both and remove them
+set -e
+REPO="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
+AGENTS="$HOME/Library/LaunchAgents"
+LOGS="$HOME/Library/Logs/Backchannel"
+APP="$REPO/build/Backchannel.app"
+UID_=$(id -u)
+
+unload() { launchctl bootout "gui/$UID_/$1" 2>/dev/null || true; rm -f "$AGENTS/$1.plist"; }
+unload app.tuple.backchannel.app
+unload app.tuple.backchannel.service
+if [ "$1" = "--remove" ]; then
+    pkill -f "Backchannel.app/Contents/MacOS/Backchannel" || true
+    echo "Backchannel removed."
+    exit 0
+fi
+
+[ -d "$APP" ] || "$REPO/bundle.sh"
+mkdir -p "$AGENTS" "$LOGS"
+pkill -f "Backchannel.app/Contents/MacOS/Backchannel" || true
+
+cat > "$AGENTS/app.tuple.backchannel.app.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>app.tuple.backchannel.app</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/open</string><string>-W</string><string>$APP</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+</dict></plist>
+PLIST
+
+cat > "$AGENTS/app.tuple.backchannel.service.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>app.tuple.backchannel.service</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/python3</string><string>-u</string><string>$REPO/backchannel.py</string>
+  </array>
+  <key>EnvironmentVariables</key><dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>StandardOutPath</key><string>$LOGS/service.log</string>
+  <key>StandardErrorPath</key><string>$LOGS/service.log</string>
+</dict></plist>
+PLIST
+
+launchctl bootstrap "gui/$UID_" "$AGENTS/app.tuple.backchannel.app.plist"
+launchctl bootstrap "gui/$UID_" "$AGENTS/app.tuple.backchannel.service.plist"
+echo "Backchannel installed. Logs: $LOGS"
