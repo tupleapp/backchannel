@@ -26,6 +26,7 @@ TUPLE = os.environ.get("TUPLE_BIN", "/usr/local/bin/tuple")
 AMP = os.environ.get("AMP_BIN", "/opt/homebrew/bin/amp")
 APP_DIR = os.path.expanduser("~/Library/Application Support/Backchannel")
 LOG_DIR = os.path.expanduser("~/Library/Logs/Backchannel")
+ROOM = os.environ.get("BACKCHANNEL_ROOM", "#backchannel")  # Slack channel the call's agents share
 SESSIONS = os.path.join(APP_DIR, "sessions.json")
 
 # Same preference order as the Backchannel app: dev, then staging, then production.
@@ -154,7 +155,7 @@ class Session:
         return (
             head
             + f"Environment: {self.env}. Call ID: {self.call_id}. "
-            + f"Tuple CLI for this call: `tuple {flags} …`.\n"
+            + f"Tuple CLI for this call: `tuple {flags} …`. Back room: Slack {ROOM}.\n"
             + "Call state when the call was detected:\n```json\n"
             + json.dumps((self.state or {}).get("call"), indent=1)[:4000]
             + "\n```\nTranscript batches follow as messages tagged [transcript]."
