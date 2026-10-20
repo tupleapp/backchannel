@@ -27,31 +27,36 @@ struct AgentCard: Identifiable, Codable, Equatable {
     var priority: String?
     /// Whether an advisory card has been expanded to show its details.
     var expanded = false
+    /// Set when the agents on the call agreed to show this card to everyone: the people whose agents agreed.
+    var shared: [String]?
 
     /// Like a cockpit's alerting: each level has its own spot on screen and its own insistence.
     enum Level {
         /// Be aware, look later: just the headline, muted, in the bottom-left corner.
         case advisory
-        /// Look into it: the usual card, top right.
+        /// Look into it: the usual private card, bottom right.
         case caution
         /// Act now: big and red at the top center, with a sound, until acknowledged.
         case warning
+        /// Everyone on the call is seeing this one: gold, top right. The top of the screen is shared, the bottom private.
+        case shared
     }
 
     var level: Level {
         switch priority {
-        case "advisory", "info": .advisory
         case "warning", "urgent": .warning
+        case _ where !(shared ?? []).isEmpty: .shared
+        case "advisory", "info": .advisory
         default: .caution
         }
     }
     var warning: Bool { level == .warning }
-    /// Warnings are always red.
-    var accent: String? { warning ? "red" : tint }
+    /// Warnings are always red; shared cards always gold.
+    var accent: String? { warning ? "red" : level == .shared ? "gold" : tint }
     /// Advisories stay collapsed to their headline until expanded.
     var collapsed: Bool { level == .advisory && !expanded }
 
-    private enum CodingKeys: String, CodingKey { case title, headline, caption, rows, bars, detail, source, icon, tint, action, priority }
+    private enum CodingKeys: String, CodingKey { case title, headline, caption, rows, bars, detail, source, icon, tint, action, priority, shared }
 }
 
 /// A horizontal bar chart: `{"items": [["label", 1.6], ...], "unit": "%", "highlight": 2}`.
@@ -285,7 +290,7 @@ final class CardRegions: ObservableObject {
 }
 
 /// A transparent panel that shows one level's cards in its own spot on screen: advisories bottom left,
-/// cautions top right, warnings top center. It's click-through everywhere except over the cards, so their buttons work.
+/// cautions bottom right, shared cards top right, warnings top center. It's click-through everywhere except over the cards, so their buttons work.
 @MainActor
 final class CardsOverlay {
     private let level: AgentCard.Level
@@ -363,6 +368,9 @@ final class CardsOverlay {
             p.setFrame(NSRect(x: screen.minX + 16, y: screen.minY + 16, width: size.width, height: size.height), display: true)
         case .caution:
             let size = NSSize(width: 400, height: screen.height - 32)
+            p.setFrame(NSRect(x: screen.maxX - size.width - 16, y: screen.minY + 16, width: size.width, height: size.height), display: true)
+        case .shared:
+            let size = NSSize(width: 400, height: screen.height - 32)
             p.setFrame(NSRect(x: screen.maxX - size.width - 16, y: screen.maxY - size.height - 16,
                               width: size.width, height: size.height), display: true)
         case .warning:
@@ -422,7 +430,7 @@ private func cardFrameReader(_ id: UUID) -> some View {
     }
 }
 
-/// One level's cards in its corner: cautions top right, advisories bottom left.
+/// One level's cards in its corner: shared top right, cautions bottom right, advisories bottom left.
 struct CardsView: View {
     let level: AgentCard.Level
     @EnvironmentObject var cards: AgentCards
@@ -431,8 +439,11 @@ struct CardsView: View {
     private let lifetime = AgentCards.lifetime
     /// Only the newest few show; older ones wait their turn until newer ones expire or are closed.
     private let maxShown = 3
-    /// Advisories sit at the bottom of the screen, so they stack upward from the bottom edge.
-    private var bottom: Bool { level == .advisory }
+    /// Private cards sit at the bottom of the screen and stack upward from the bottom edge; shared ones sit at the top.
+    private var bottom: Bool { level == .advisory || level == .caution }
+    /// Advisories are on the left; the rest are on the right.
+    private var leading: Bool { level == .advisory }
+    private var corner: Alignment { bottom ? (leading ? .bottomLeading : .bottomTrailing) : .topTrailing }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -445,7 +456,7 @@ struct CardsView: View {
             // screen entirely; they're still in the transcript as research.
             let stacked = Array(live.filter { !shownIDs.contains($0.id) }.reversed())
             let open = cards.openStacks.contains(level)
-            VStack(alignment: bottom ? .leading : .trailing, spacing: 12) {
+            VStack(alignment: leading ? .leading : .trailing, spacing: 12) {
                 if bottom { Spacer(minLength: 0) }
                 ForEach(bottom ? shown.reversed() : shown) { card in
                     CardView(card: card, age: context.date.timeIntervalSince(card.shownAt), lifetime: lifetime,
@@ -454,8 +465,8 @@ struct CardsView: View {
                              peek: regions.hovered == card.id)
                         .background(cardFrameReader(card.id))
                         .transition(.asymmetric(
-                            insertion: .move(edge: bottom ? .leading : .trailing).combined(with: .opacity)
-                                .combined(with: .scale(scale: 0.92, anchor: bottom ? .leading : .trailing)),
+                            insertion: .move(edge: leading ? .leading : .trailing).combined(with: .opacity)
+                                .combined(with: .scale(scale: 0.92, anchor: leading ? .leading : .trailing)),
                             removal: .opacity.combined(with: .scale(scale: 0.96))))
                 }
                 if !stacked.isEmpty {
@@ -472,7 +483,7 @@ struct CardsView: View {
                 if !bottom { Spacer(minLength: 0) }
             }
             .padding(12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: bottom ? .bottomLeading : .topTrailing)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner)
             .coordinateSpace(name: "overlay")
             .onPreferenceChange(CardFrames.self) { regions.rects = $0 }
             .animation(.spring(response: 0.45, dampingFraction: 0.85), value: live.map(\.id))
@@ -686,6 +697,8 @@ struct CardView: View {
         "pink": (Color(red: 1.0, green: 0.35, blue: 0.60), Color(red: 1.0, green: 0.55, blue: 0.45)),
         "red": (Color(red: 1.0, green: 0.30, blue: 0.35), Color(red: 1.0, green: 0.50, blue: 0.30)),
         "teal": (Color(red: 0.15, green: 0.75, blue: 0.80), Color(red: 0.35, green: 0.60, blue: 1.0)),
+        // Reserved for shared cards, so they never look like a private one.
+        "gold": (Color(red: 1.0, green: 0.78, blue: 0.25), Color(red: 1.0, green: 0.92, blue: 0.55)),
     ]
     private var colors: (Color, Color) { Self.tints[card.accent ?? ""] ?? Self.tints["violet"]! }
 
@@ -770,6 +783,7 @@ struct CardView: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let who = card.shared, !who.isEmpty { sharedBanner(who) }
             header
 
             if card.headline != nil || card.caption != nil {
@@ -934,6 +948,20 @@ struct CardView: View {
         .buttonStyle(.plain)
         .opacity(hovering || card.rating != nil ? 1 : 0.55)
         .help(up ? "Useful" : "Not useful")
+    }
+
+    /// Says this card is on everyone's screen, and whose agents agreed to put it there.
+    private func sharedBanner(_ who: [String]) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "person.3.fill").font(.system(size: 10, weight: .bold))
+            Text("SHARED WITH THE ROOM").font(.system(size: 10.5, weight: .bold)).tracking(0.6)
+            Text("· " + who.joined(separator: ", ")).font(.system(size: 10.5, weight: .medium)).lineLimit(1)
+                .foregroundStyle(.black.opacity(0.6))
+        }
+        .foregroundStyle(.black.opacity(0.85))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(gradient, in: Capsule())
     }
 
     private var header: some View {

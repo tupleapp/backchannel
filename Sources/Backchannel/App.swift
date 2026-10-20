@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let transcript = TranscriptPanel()
     let cards = AgentCards()
     /// Like a cockpit, each alert level has its own place on screen.
-    let cardsOverlays = [CardsOverlay(level: .advisory), CardsOverlay(level: .caution), CardsOverlay(level: .warning)]
+    let cardsOverlays = [CardsOverlay(level: .advisory), CardsOverlay(level: .caution), CardsOverlay(level: .shared), CardsOverlay(level: .warning)]
     let hotkeys = Hotkeys()
     private var keyMonitor: Any?
     lazy var asides = MutedAsides { [weak self] in await self?.stream.localMuted() ?? false }

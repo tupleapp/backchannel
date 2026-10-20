@@ -26,7 +26,7 @@ While you're muted in Tuple, the app transcribes your mic on-device with Whisper
 
 ## Cards
 
-The card format is in `AGENTS.md`. Cards show by priority: advisories bottom left, the usual cards top right, and rare warnings top center until acknowledged. The newest three at each level show at once and fade after 20 seconds (hovering pauses the countdown). Older ones collapse into a stack you can click through. Every card stays in the transcript as research; 👍/👎 go back to the agent.
+The card format is in `AGENTS.md`. The top of the screen is shared and the bottom is private. Your own cards show bottom right, advisories bottom left, cards the agents on the call agreed to show everyone in gold at the top right, and rare warnings top center until acknowledged. The newest three at each level show at once and fade after 20 seconds (hovering pauses the countdown). Older ones collapse into a stack you can click through. Every card stays in the transcript as research; 👍/👎 go back to the agent.
 
 | Keys | What it does |
 |---|---|

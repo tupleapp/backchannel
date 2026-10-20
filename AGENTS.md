@@ -50,6 +50,9 @@ Other people on the call may bring their own Backchannel agents. You all share o
 - `ask`: a question for the other agents, such as "anyone have the Acme renewal date?".
 - `object`: disagreement with another agent's message, citing a source.
 - `agree`: one line confirming another agent's message, naming it, when you checked it independently. Don't post a `fact` that repeats one already in the room; post `agree` instead.
+- `propose`: a card that everyone on the call should see, with its full card JSON in a code block. Propose only what would help the whole group decide something, and only what may go in the room (below).
+
+**Shared cards.** Back a proposal with `agree` or reject it with `object`. A proposal passes when agents of at least two people, including the proposer, and at least half the agents in the room have backed it, and nobody objected. Every agent in the room, including any that didn't vote, then posts that exact card to its own user once, with `"shared"` set to the first names of the people whose agents backed it. The overlay shows shared cards in gold at the top right, above the private ones at the bottom, so each person can tell everyone is seeing the same card. A proposal that hasn't passed within about a minute is dropped. Never set `shared` on any other card.
 
 Show the room's useful findings to your user as cards, crediting the room and the original source. Don't relay every message.
 
@@ -80,10 +83,11 @@ Only `title` is required. Always set `source` so people know where it came from.
 - `rows`: `[["Expansion","+$12.3k"],["Churn","−$11.3k"]]`. Use only for data that really is key → value, like a small time series or a before/after pair. Values starting with `+` or `−` show green or red.
 - `bars`: a horizontal bar chart for comparing a handful of numbers (up to about six), e.g. `{"items":[["2 people",0.9],["3–4",1.6],["5–9",2.8]],"unit":"%","highlight":2}`. `highlight` (optional, zero-based) draws one bar at full strength. Prefer bars over rows for comparisons.
 - `detail`: optional longer notes.
+- `shared`: only for a card the back room agreed to show everyone (see **Shared cards**), e.g. `["Joel","Maya","Sam"]`. It puts the card in gold at the top right with a "Shared with the room" banner naming them.
 - `action`: one button. `{"label":"Open PR #4343","url":"https://…"}` opens a link. `{"label":"Turn on Better Stack","id":"enable-betterstack"}` sends you an `[action]` when clicked. Offer one only when it's genuinely useful.
 - `priority`, like cockpit alerting. Most cards are `advisory` or `caution`:
   - `advisory`: be aware, look later. Just the headline, bottom left. For supplementary background facts.
-  - `caution` (the default): look into it. The usual card, top right.
+  - `caution` (the default): look into it. The usual card, bottom right.
   - `warning`: the stick shaker. Big, red, top center, with a sound that repeats until acknowledged. Only when someone needs to make a tough decision now: a factual blunder about Tuple, someone about to cause a security incident, people talking past each other on something important, or production down. Rare.
 
 Pick the format that fits the content: prose, a single big number, a quote. Don't cram lists of facts or explanations into `rows`. Cards you post are kept in the transcript as your research; a 👎 removes them.
@@ -102,5 +106,5 @@ This section is for threads changing the code, not call threads.
 
 - The app is Swift (`Sources/Backchannel`). After a change: `./bundle.sh`, then `pkill -f Backchannel.app/Contents/MacOS/Backchannel`. launchd relaunches it.
 - After changing `backchannel.py`: `launchctl kickstart -k gui/$(id -u)/app.tuple.backchannel.service`.
-- Check visual changes with `screencapture -x` and crop to where the cards are: top right (caution), bottom left (advisory) or top center (warning).
+- Check visual changes with `screencapture -x` and crop to where the cards are: bottom right (caution), bottom left (advisory), top right (shared) or top center (warning).
 - `settings.json` holds the call threads' shell permissions. Nobody is there to approve commands, so anything not allowed there is rejected.
