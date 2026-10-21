@@ -12,3 +12,17 @@ os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "a") as f:
     f.write(json.dumps(card, ensure_ascii=False) + "\n")
 print("posted:", card["title"])
+
+# Experimental: also show it as a native Tuple notification over the call.
+if os.environ.get("BACKCHANNEL_CARDS") == "tuple":
+    import subprocess
+    body = " ".join(x for x in (card.get("headline"), card.get("caption")) if x) or card["title"]
+    if card.get("source"):
+        body += f" ({card['source']})"
+    title = ("Shared · " if card.get("shared") else "") + card["title"]
+    args = ["tuple", "notifications", "send", "--title", title, "--body", body, "--sender", "Amp"]
+    if card.get("priority") in ("advisory", "info"):
+        args.append("--ephemeral")
+    r = subprocess.run(args, capture_output=True, text=True)
+    # The CLI can exit 0 on failure (e.g. "no longer available (HTTP 410)"), so show what it said.
+    print("tuple notification:", (r.stdout + r.stderr).strip() or f"exit {r.returncode}")

@@ -13,11 +13,21 @@ UID_=$(id -u)
 unload() { launchctl bootout "gui/$UID_/$1" 2>/dev/null || true; rm -f "$AGENTS/$1.plist"; }
 unload app.tuple.backchannel.app
 unload app.tuple.backchannel.service
+# Tuple triggers wake the service when a call starts or ends, one copy per Tuple environment.
+for T in "$HOME/.tuple" "$HOME/.tuplestaging" "$HOME/.tupledev"; do rm -rf "$T/triggers/backchannel"; done
 if [ "$1" = "--remove" ]; then
     pkill -f "Backchannel.app/Contents/MacOS/Backchannel" || true
     echo "Backchannel removed."
     exit 0
 fi
+
+for T in "$HOME/.tuple" "$HOME/.tuplestaging" "$HOME/.tupledev"; do
+    [ -d "$T" ] || continue
+    mkdir -p "$T/triggers/backchannel"
+    for EVENT in call-connected room-joined call-ended; do
+        install -m 0755 "$REPO/trigger" "$T/triggers/backchannel/$EVENT"
+    done
+done
 
 [ -d "$APP" ] || "$REPO/bundle.sh"
 mkdir -p "$AGENTS" "$LOGS"
@@ -48,6 +58,7 @@ cat > "$AGENTS/app.tuple.backchannel.service.plist" <<PLIST
   </array>
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>BACKCHANNEL_CARDS</key><string>${BACKCHANNEL_CARDS:-overlay}</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -61,3 +72,4 @@ PLIST
 launchctl bootstrap "gui/$UID_" "$AGENTS/app.tuple.backchannel.app.plist"
 launchctl bootstrap "gui/$UID_" "$AGENTS/app.tuple.backchannel.service.plist"
 echo "Backchannel installed. Logs: $LOGS"
+echo "Turn on Tuple's triggers (Settings → Triggers → Enable) so calls start it right away."

@@ -35,7 +35,10 @@ TARGETS = [
     ("staging", "/tmp/tuple.staging.sock"),
     ("prod", "/tmp/tuple.sock"),
 ]
-POLL = 5
+POLL = 5  # seconds between state checks while Tuple's triggers have never woken us
+TRIGGERED_POLL = 30  # once triggers work, they wake us; this is only a safety net
+# Tuple runs ./trigger from these on call-connected, room-joined and call-ended (installed by ./install).
+TRIGGER_DIRS = [os.path.expanduser(f"~/{d}/triggers/backchannel") for d in (".tuple", ".tuplestaging", ".tupledev")]
 END_GRACE = 15  # seconds out of the call before we call it over
 FLUSH = 2  # seconds of quiet before a transcript batch is sent
 
@@ -123,8 +126,9 @@ class Session:
                 "--title", self.title(),
                 "-l", "backchannel",
             ]
+        env = dict(os.environ, TUPLE_HOST=self.host, TUPLE_ENV=self.env, BACKCHANNEL_CALL_ID=self.call_id)
         self.amp = subprocess.Popen(
-            args, cwd=REPO, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            args, cwd=REPO, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True, bufsize=1,
         )
         threading.Thread(target=self.read_amp, daemon=True).start()
@@ -158,8 +162,18 @@ class Session:
             + f"Tuple CLI for this call: `tuple {flags} …`. Back room: Slack {ROOM}.\n"
             + "Call state when the call was detected:\n```json\n"
             + json.dumps((self.state or {}).get("call"), indent=1)[:4000]
-            + "\n```\nTranscript batches follow as messages tagged [transcript]."
+            + "\n```\nTranscript batches follow as messages tagged [transcript].\n\n"
+            + "Tuple's own connect prompt for this call follows. This service already supplies the call "
+            + "(delivery option 1 in Tuple's live-call guide), so don't start your own follower.\n\n"
+            + self.connect_prompt()
         )
+
+    def connect_prompt(self):
+        try:
+            return subprocess.run(tuple_args(self.env, self.host) + ["connect", "prompt", "--call", self.call_id],
+                                  capture_output=True, text=True, timeout=10).stdout.strip()
+        except Exception as e:
+            return f"(tuple connect prompt failed: {e})"
 
     def read_amp(self):
         with open(self.log_path, "a") as f:
@@ -315,7 +329,27 @@ def main():
                 threading.Thread(target=s.finish, daemon=True).start()
 
         save_sessions(sessions)
-        time.sleep(POLL)
+        wait_for_wake()
+
+
+def wake_stamps():
+    stamps = []
+    for d in TRIGGER_DIRS:
+        try:
+            stamps.append(os.path.getmtime(os.path.join(d, "wake")))
+        except OSError:
+            pass
+    return stamps
+
+
+def wait_for_wake():
+    """Sleep until a Tuple trigger touches a wake file, or the poll interval passes."""
+    before = wake_stamps()
+    deadline = time.time() + (TRIGGERED_POLL if before else POLL)
+    while time.time() < deadline:
+        time.sleep(0.5)
+        if wake_stamps() != before:
+            return
 
 
 if __name__ == "__main__":

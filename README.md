@@ -16,7 +16,9 @@ Requires macOS 26, the `tuple` CLI at `/usr/local/bin/tuple`, the Amp CLI at `/o
 ./install
 ```
 
-This builds the app if needed and installs two LaunchAgents, so both parts start at login and restart if they exit. Run `./install --remove` to stop and remove them.
+This builds the app if needed and installs two LaunchAgents, so both parts start at login and restart if they exit. It also adds a trigger to each Tuple environment's triggers folder (for example `~/.tuple/triggers/backchannel`), so Tuple wakes the service as soon as a call connects or ends. Turn triggers on once in Tuple's Settings → Triggers. Without them, the service checks for calls every 5 seconds instead. Run `./install --remove` to stop and remove all of it.
+
+To also show cards as Tuple's own notifications over the call (experimental; they show only the title, headline, caption and source), install with `BACKCHANNEL_CARDS=tuple ./install`.
 
 Logs are in `~/Library/Logs/Backchannel`. `service.log` links each call to its Amp thread. App data (cards, feedback, asides, per-call research) is in `~/Library/Application Support/Backchannel`.
 
