@@ -1,5 +1,7 @@
 # Backchannel
 
+> **Paused.** Call agents were posting to a team-visible Slack channel, so Backchannel is off while we rework its privacy. If you installed it, run `./install --remove`, or `git pull`: the service uninstalls itself the next time it starts. `./install` only removes it for now.
+
 An agent that listens to your Tuple calls and quietly passes you notes: metrics, tickets, customer context and answers, as cards on your screen. It runs as an [Amp](https://ampcode.com) thread per call and starts on its own.
 
 **This is a starter kit, not a product.** Your private backchannel is yours: fork it and change what it notices, how it tells you, and where it keeps notes. The split is:

@@ -280,6 +280,12 @@ class Session:
 
 
 def main():
+    # Paused while we rework privacy. Any running copy that picks this up removes
+    # itself; install runs in its own session so launchd's bootout can't cut it short.
+    log("backchannel is paused; uninstalling")
+    subprocess.Popen([os.path.join(REPO, "install"), "--remove"], start_new_session=True)
+    time.sleep(60)
+    return
     log(f"backchannel started (repo {REPO})")
     sessions = load_sessions()
     active = {}  # call_id -> Session
