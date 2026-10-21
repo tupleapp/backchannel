@@ -219,8 +219,10 @@ final class TranscriptStream: ObservableObject {
         case "stream_opened":
             status = "Connected"
             caughtUp = false
-            pendingInCall = r["call_id"] != nil
-            setCall(r["call_id"] as? String)
+            // Older CLIs put the call ID at the top level; newer ones put it in `data`.
+            let id = (r["call_id"] ?? data["call_id"]) as? String
+            pendingInCall = id != nil
+            setCall(id)
             return
         case "caught_up":
             status = "Live"
