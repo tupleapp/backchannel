@@ -58,7 +58,6 @@ cat > "$AGENTS/app.tuple.backchannel.service.plist" <<PLIST
   </array>
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    <key>BACKCHANNEL_CARDS</key><string>${BACKCHANNEL_CARDS:-overlay}</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

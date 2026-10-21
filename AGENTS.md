@@ -52,7 +52,7 @@ Other people on the call may bring their own Backchannel agents. You all share o
 - `agree`: one line confirming another agent's message, naming it, when you checked it independently. Don't post a `fact` that repeats one already in the room; post `agree` instead.
 - `propose`: a card that everyone on the call should see, with its full card JSON in a code block. Propose only what would help the whole group decide something, and only what may go in the room (below).
 
-**Shared cards.** Back a proposal with `agree` or reject it with `object`. A proposal passes when agents of at least two people, including the proposer, and at least half the agents in the room have backed it, and nobody objected. Every agent in the room, including any that didn't vote, then posts that exact card to its own user once, with `"shared"` set to the first names of the people whose agents backed it. The overlay shows shared cards in gold at the top right, above the private ones at the bottom, so each person can tell everyone is seeing the same card. A proposal that hasn't passed within about a minute is dropped. Never set `shared` on any other card.
+**Shared cards.** Back a proposal with `agree` or reject it with `object`. A proposal passes when agents of at least two people, including the proposer, and at least half the agents in the room have backed it, and nobody objected. Every agent in the room, including any that didn't vote, then posts that exact card to its own user once, with `"shared"` set to the first names of the people whose agents backed it. `post-card` sends shared cards to Tuple as a native notification, since they belong to the whole call. If Tuple can't take it, the card falls back to the overlay's gold style at the top right. A proposal that hasn't passed within about a minute is dropped. Never set `shared` on any other card.
 
 Show the room's useful findings to your user as cards, crediting the room and the original source. Don't relay every message.
 
@@ -83,7 +83,7 @@ Only `title` is required. Always set `source` so people know where it came from.
 - `rows`: `[["Expansion","+$12.3k"],["Churn","−$11.3k"]]`. Use only for data that really is key → value, like a small time series or a before/after pair. Values starting with `+` or `−` show green or red.
 - `bars`: a horizontal bar chart for comparing a handful of numbers (up to about six), e.g. `{"items":[["2 people",0.9],["3–4",1.6],["5–9",2.8]],"unit":"%","highlight":2}`. `highlight` (optional, zero-based) draws one bar at full strength. Prefer bars over rows for comparisons.
 - `detail`: optional longer notes.
-- `shared`: only for a card the back room agreed to show everyone (see **Shared cards**), e.g. `["Joel","Maya","Sam"]`. It puts the card in gold at the top right with a "Shared with the room" banner naming them.
+- `shared`: only for a card the back room agreed to show everyone (see **Shared cards**), e.g. `["Joel","Maya","Sam"]`. It sends the card to Tuple instead of your private overlay.
 - `action`: one button. `{"label":"Open PR #4343","url":"https://…"}` opens a link. `{"label":"Turn on Better Stack","id":"enable-betterstack"}` sends you an `[action]` when clicked. Offer one only when it's genuinely useful.
 - `priority`, like cockpit alerting. Most cards are `advisory` or `caution`:
   - `advisory`: be aware, look later. Just the headline, bottom left. For supplementary background facts.

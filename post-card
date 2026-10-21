@@ -1,28 +1,51 @@
 #!/usr/bin/env python3
-"""Validate one card JSON object from stdin and append it to the Backchannel app's cards.jsonl."""
-import json, os, sys
+"""Post one card JSON object from stdin.
+
+Private cards go to the Backchannel overlay (cards.jsonl), which you control.
+Cards with "shared" set belong to the whole call, so they go to Tuple as a native
+notification. If Tuple can't take it, the card falls back to the overlay's gold
+shared style.
+"""
+import json, os, subprocess, sys
+
 try:
     card = json.loads(sys.stdin.read())
 except ValueError as e:
     sys.exit(f"not valid JSON: {e}")
 if not isinstance(card, dict) or not card.get("title"):
     sys.exit("a card is a JSON object with at least a title")
+
+
+def to_tuple(card):
+    """Send a shared card as a Tuple notification. Returns an error message, or None on success."""
+    body = " ".join(x for x in (card.get("headline"), card.get("caption")) if x) or card["title"]
+    if card.get("source"):
+        body += f" ({card['source']})"
+    args = ["tuple", "--format", "json", "notifications", "send", "--title", card["title"], "--body", body,
+            "--sender", "Backchannel room · " + ", ".join(card["shared"])]
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=15)
+    except Exception as e:
+        return str(e)
+    # The CLI can exit 0 on failure (e.g. "no longer available (HTTP 410)"), so only trust a JSON result.
+    try:
+        out = json.loads(r.stdout)
+    except ValueError:
+        out = None
+    if r.returncode != 0 or not isinstance(out, dict) or "error" in out:
+        return (r.stdout + r.stderr).strip() or f"exit {r.returncode}"
+    return None
+
+
+if card.get("shared"):
+    err = to_tuple(card)
+    if err is None:
+        print("shared via Tuple:", card["title"])
+        sys.exit(0)
+    print(f"Tuple notification failed ({err}); showing it in the overlay instead")
+
 path = os.path.expanduser("~/Library/Application Support/Backchannel/cards.jsonl")
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "a") as f:
     f.write(json.dumps(card, ensure_ascii=False) + "\n")
 print("posted:", card["title"])
-
-# Experimental: also show it as a native Tuple notification over the call.
-if os.environ.get("BACKCHANNEL_CARDS") == "tuple":
-    import subprocess
-    body = " ".join(x for x in (card.get("headline"), card.get("caption")) if x) or card["title"]
-    if card.get("source"):
-        body += f" ({card['source']})"
-    title = ("Shared · " if card.get("shared") else "") + card["title"]
-    args = ["tuple", "notifications", "send", "--title", title, "--body", body, "--sender", "Amp"]
-    if card.get("priority") in ("advisory", "info"):
-        args.append("--ephemeral")
-    r = subprocess.run(args, capture_output=True, text=True)
-    # The CLI can exit 0 on failure (e.g. "no longer available (HTTP 410)"), so show what it said.
-    print("tuple notification:", (r.stdout + r.stderr).strip() or f"exit {r.returncode}")
